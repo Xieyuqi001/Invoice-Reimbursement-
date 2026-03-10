@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发票管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .drop-zone {
+            transition: all 0.3s ease;
+        }
+        .drop-zone.dragover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .preview-img {
+            max-height: 150px;
+            object-fit: contain;
+        }
+        .ocr-loading {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">发票管理系统</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="space-y-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">预设信息</h2>
+                        <button type="button" id="togglePresetBtn" class="text-sm text-blue-500 hover:text-blue-700">
+                            展开/收起
+                        </button>
+                    </div>
+                    <div id="presetSection" class="space-y-4">
+                        <p class="text-sm text-gray-500 mb-2">设置常用信息，保存后可一键填充到表单</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">预设姓名</label>
+                                <input type="text" id="presetName"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="留空则不预设">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">预设学号</label>
+                                <input type="text" id="presetStudentId"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="留空则不预设">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">预设课题组名称</label>
+                                <input type="text" id="presetGroupName"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="留空则不预设">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">预设对公/对私</label>
+                                <select id="presetPaymentType"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">不预设</option>
+                                    <option value="对公">对公</option>
+                                    <option value="对私">对私</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">预设其他信息</label>
+                            <textarea id="presetOtherInfo" rows="2"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="留空则不预设"></textarea>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" id="savePresetBtn"
+                                class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition-colors text-sm">
+                                保存预设
+                            </button>
+                            <button type="button" id="clearPresetBtn"
+                                class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-sm">
+                                清空预设
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">添加新记录</h2>
+                        <div class="flex gap-2">
+                            <button type="button" id="applyPresetBtn"
+                                class="bg-orange-500 text-white py-1 px-3 rounded-md text-sm hover:bg-orange-600 transition-colors">
+                                一键填充预设
+                            </button>
+                        </div>
+                    </div>
+                    <form id="recordForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">姓名 *</label>
+                                <input type="text" id="name" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">学号 *</label>
+                                <input type="text" id="studentId" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">发票号 *</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="invoiceNumber" required
+                                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <span id="ocrStatusBadge" class="hidden px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-600"></span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">课题组名称</label>
+                                <input type="text" id="groupName"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">对公/对私</label>
+                                <select id="paymentType"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="对公">对公</option>
+                                    <option value="对私">对私</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">其他信息</label>
+                            <textarea id="otherInfo" rows="2"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="可选填写其他备注信息"></textarea>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-sm font-medium text-gray-600">发票图片 *</label>
+                                <span id="ocrAvailableBadge" class="text-xs px-2 py-0.5 rounded-full"></span>
+                            </div>
+                            <div id="invoiceDropZone" class="drop-zone border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:border-blue-400">
+                                <p class="text-gray-500">拖拽图片到此处 / 点击选择 / Ctrl+V 粘贴</p>
+                                <p class="text-xs text-gray-400 mt-1">上传后自动识别发票号</p>
+                                <input type="file" id="invoiceFile" accept="image/*" class="hidden">
+                                <img id="invoicePreview" class="preview-img mx-auto mt-2 hidden">
+                            </div>
+                            <div id="ocrResultArea" class="hidden mt-2 p-2 bg-gray-50 rounded-md text-sm">
+                                <div class="flex justify-between items-center">
+                                    <span id="ocrResultText" class="text-gray-600"></span>
+                                    <button type="button" id="reRecognizeBtn" class="text-blue-500 text-xs hover:underline">重新识别</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">订单图片 *</label>
+                            <div id="orderDropZone" class="drop-zone border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:border-blue-400">
+                                <p class="text-gray-500">拖拽图片到此处 / 点击选择 / Ctrl+V 粘贴</p>
+                                <input type="file" id="orderFile" accept="image/*" class="hidden">
+                                <img id="orderPreview" class="preview-img mx-auto mt-2 hidden">
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button type="submit" id="submitBtn"
+                                class="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors">
+                                保存记录
+                            </button>
+                            <button type="button" id="clearBtn"
+                                class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+                                清空
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">历史记录</h2>
+                    <div class="flex gap-2">
+                        <button id="exportAllBtn" class="bg-green-500 text-white py-1 px-3 rounded-md text-sm hover:bg-green-600 transition-colors">
+                            导出全部PDF
+                        </button>
+                        <button id="exportExcelBtn" class="bg-purple-500 text-white py-1 px-3 rounded-md text-sm hover:bg-purple-600 transition-colors">
+                            导出Excel
+                        </button>
+                    </div>
+                </div>
+                <div id="recordsList" class="space-y-3 max-h-[600px] overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">暂无记录</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-semibold mb-4">编辑记录</h3>
+            <form id="editForm" class="space-y-4">
+                <input type="hidden" id="editId">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">姓名</label>
+                    <input type="text" id="editName" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">学号</label>
+                    <input type="text" id="editStudentId" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">发票号</label>
+                    <input type="text" id="editInvoiceNumber" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">课题组名称</label>
+                    <input type="text" id="editGroupName"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">对公/对私</label>
+                    <select id="editPaymentType"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="对公">对公</option>
+                        <option value="对私">对私</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">其他信息</label>
+                    <textarea id="editOtherInfo" rows="2"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">发票图片（可选）</label>
+                    <input type="file" id="editInvoiceFile" accept="image/*" class="w-full">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">订单图片（可选）</label>
+                    <input type="file" id="editOrderFile" accept="image/*" class="w-full">
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit" class="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">保存</button>
+                    <button type="button" id="cancelEditBtn" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentDropZone = null;
+        let ocrAvailable = false;
+        const PRESET_KEY = 'fapiao_preset';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRecords();
+            loadPreset();
+            checkOCRStatus();
+            setupDropZones();
+            setupPasteHandler();
+            setupEventListeners();
+        });
+
+        async function checkOCRStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/ocr/status`);
+                const data = await response.json();
+                ocrAvailable = data.available;
+                
+                const badge = document.getElementById('ocrAvailableBadge');
+                if (ocrAvailable) {
+                    badge.textContent = 'OCR已启用';
+                    badge.className = 'text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700';
+                } else {
+                    badge.textContent = 'OCR未配置';
+                    badge.className = 'text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500';
+                }
+            } catch (error) {
+                console.error('检查OCR状态失败:', error);
+                ocrAvailable = false;
+            }
+        }
+
+        async function recognizeInvoice(file) {
+            if (!ocrAvailable) {
+                showOCRResult(false, null, 'OCR服务未配置');
+                return;
+            }
+
+            const statusBadge = document.getElementById('ocrStatusBadge');
+            statusBadge.textContent = '识别中...';
+            statusBadge.className = 'px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700 ocr-loading';
+            statusBadge.classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_BASE}/ocr/recognize`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.invoice_number) {
+                    document.getElementById('invoiceNumber').value = result.invoice_number;
+                    statusBadge.textContent = '已识别';
+                    statusBadge.className = 'px-2 py-1 text-xs rounded-full bg-green-100 text-green-700';
+                    showOCRResult(true, result.invoice_number, null);
+                } else {
+                    statusBadge.textContent = '识别失败';
+                    statusBadge.className = 'px-2 py-1 text-xs rounded-full bg-red-100 text-red-700';
+                    showOCRResult(false, null, result.error || '未能识别发票号');
+                }
+            } catch (error) {
+                statusBadge.textContent = '识别出错';
+                statusBadge.className = 'px-2 py-1 text-xs rounded-full bg-red-100 text-red-700';
+                showOCRResult(false, null, 'OCR服务请求失败');
+            }
+        }
+
+        function showOCRResult(success, invoiceNumber, error) {
+            const resultArea = document.getElementById('ocrResultArea');
+            const resultText = document.getElementById('ocrResultText');
+            
+            resultArea.classList.remove('hidden');
+            
+            if (success) {
+                resultText.innerHTML = `<span class="text-green-600">✓</span> 识别到发票号: <strong>${invoiceNumber}</strong>`;
+            } else {
+                resultText.innerHTML = `<span class="text-red-600">✗</span> ${error}，请手动输入`;
+            }
+        }
+
+        function loadPreset() {
+            const preset = localStorage.getItem(PRESET_KEY);
+            if (preset) {
+                const data = JSON.parse(preset);
+                if (data.name) document.getElementById('presetName').value = data.name;
+                if (data.studentId) document.getElementById('presetStudentId').value = data.studentId;
+                if (data.groupName) document.getElementById('presetGroupName').value = data.groupName;
+                if (data.paymentType) document.getElementById('presetPaymentType').value = data.paymentType;
+                if (data.otherInfo) document.getElementById('presetOtherInfo').value = data.otherInfo;
+            }
+        }
+
+        function savePreset() {
+            const preset = {
+                name: document.getElementById('presetName').value,
+                studentId: document.getElementById('presetStudentId').value,
+                groupName: document.getElementById('presetGroupName').value,
+                paymentType: document.getElementById('presetPaymentType').value,
+                otherInfo: document.getElementById('presetOtherInfo').value
+            };
+            localStorage.setItem(PRESET_KEY, JSON.stringify(preset));
+            alert('预设已保存！');
+        }
+
+        function clearPreset() {
+            if (!confirm('确定要清空预设吗？')) return;
+            localStorage.removeItem(PRESET_KEY);
+            document.getElementById('presetName').value = '';
+            document.getElementById('presetStudentId').value = '';
+            document.getElementById('presetGroupName').value = '';
+            document.getElementById('presetPaymentType').value = '';
+            document.getElementById('presetOtherInfo').value = '';
+            alert('预设已清空！');
+        }
+
+        function applyPreset() {
+            const preset = localStorage.getItem(PRESET_KEY);
+            if (!preset) {
+                alert('没有保存的预设，请先设置预设信息');
+                return;
+            }
+            
+            const data = JSON.parse(preset);
+            let applied = false;
+            
+            if (data.name) {
+                document.getElementById('name').value = data.name;
+                applied = true;
+            }
+            if (data.studentId) {
+                document.getElementById('studentId').value = data.studentId;
+                applied = true;
+            }
+            if (data.groupName) {
+                document.getElementById('groupName').value = data.groupName;
+                applied = true;
+            }
+            if (data.paymentType) {
+                document.getElementById('paymentType').value = data.paymentType;
+                applied = true;
+            }
+            if (data.otherInfo) {
+                document.getElementById('otherInfo').value = data.otherInfo;
+                applied = true;
+            }
+            
+            if (applied) {
+                alert('预设已应用！');
+            } else {
+                alert('预设为空，请先设置预设信息');
+            }
+        }
+
+        function setupDropZones() {
+            const invoiceZone = { 
+                zone: document.getElementById('invoiceDropZone'), 
+                fileInput: document.getElementById('invoiceFile'), 
+                preview: document.getElementById('invoicePreview') 
+            };
+            const orderZone = { 
+                zone: document.getElementById('orderDropZone'), 
+                fileInput: document.getElementById('orderFile'), 
+                preview: document.getElementById('orderPreview') 
+            };
+
+            [invoiceZone, orderZone].forEach(({ zone, fileInput, preview }) => {
+                zone.addEventListener('click', () => fileInput.click());
+                
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.classList.add('dragover');
+                    currentDropZone = { fileInput, preview };
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('dragover');
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0 && files[0].type.startsWith('image/')) {
+                        handleFileSelect(files[0], fileInput, preview);
+                        if (fileInput === document.getElementById('invoiceFile')) {
+                            recognizeInvoice(files[0]);
+                        }
+                    }
+                });
+
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handleFileSelect(e.target.files[0], fileInput, preview);
+                        if (fileInput === document.getElementById('invoiceFile')) {
+                            recognizeInvoice(e.target.files[0]);
+                        }
+                    }
+                });
+            });
+        }
+
+        function setupPasteHandler() {
+            document.addEventListener('paste', (e) => {
+                const items = e.clipboardData.items;
+                for (let item of items) {
+                    if (item.type.startsWith('image/')) {
+                        const file = item.getAsFile();
+                        if (currentDropZone) {
+                            handleFileSelect(file, currentDropZone.fileInput, currentDropZone.preview);
+                            if (currentDropZone.fileInput === document.getElementById('invoiceFile')) {
+                                recognizeInvoice(file);
+                            }
+                        } else {
+                            const invoiceFile = document.getElementById('invoiceFile');
+                            const invoicePreview = document.getElementById('invoicePreview');
+                            if (!invoiceFile.files.length) {
+                                handleFileSelect(file, invoiceFile, invoicePreview);
+                                recognizeInvoice(file);
+                            } else {
+                                const orderFile = document.getElementById('orderFile');
+                                const orderPreview = document.getElementById('orderPreview');
+                                handleFileSelect(file, orderFile, orderPreview);
+                            }
+                        }
+                        break;
+                    }
+                }
+            });
+        }
+
+        function handleFileSelect(file, fileInput, preview) {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                preview.src = e.target.result;
+                preview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setupEventListeners() {
+            document.getElementById('recordForm').addEventListener('submit', handleSubmit);
+            document.getElementById('clearBtn').addEventListener('click', clearForm);
+            document.getElementById('exportAllBtn').addEventListener('click', exportAllPdfs);
+            document.getElementById('exportExcelBtn').addEventListener('click', exportExcel);
+            document.getElementById('editForm').addEventListener('submit', handleEdit);
+            document.getElementById('cancelEditBtn').addEventListener('click', () => {
+                document.getElementById('editModal').classList.add('hidden');
+                document.getElementById('editModal').classList.remove('flex');
+            });
+            document.getElementById('savePresetBtn').addEventListener('click', savePreset);
+            document.getElementById('clearPresetBtn').addEventListener('click', clearPreset);
+            document.getElementById('applyPresetBtn').addEventListener('click', applyPreset);
+            document.getElementById('togglePresetBtn').addEventListener('click', () => {
+                const section = document.getElementById('presetSection');
+                section.classList.toggle('hidden');
+            });
+            document.getElementById('reRecognizeBtn').addEventListener('click', () => {
+                const invoiceFile = document.getElementById('invoiceFile');
+                if (invoiceFile.files.length > 0) {
+                    recognizeInvoice(invoiceFile.files[0]);
+                }
+            });
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('name', document.getElementById('name').value);
+            formData.append('student_id', document.getElementById('studentId').value);
+            formData.append('invoice_number', document.getElementById('invoiceNumber').value);
+            formData.append('group_name', document.getElementById('groupName').value);
+            formData.append('payment_type', document.getElementById('paymentType').value);
+            formData.append('other_info', document.getElementById('otherInfo').value);
+            formData.append('invoice_image', document.getElementById('invoiceFile').files[0]);
+            formData.append('order_image', document.getElementById('orderFile').files[0]);
+
+            try {
+                const response = await fetch(`${API_BASE}/records`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || '保存失败');
+                }
+
+                clearFormExceptPreset();
+                loadRecords();
+                alert('保存成功！');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('recordForm').reset();
+            document.getElementById('invoicePreview').classList.add('hidden');
+            document.getElementById('orderPreview').classList.add('hidden');
+            document.getElementById('ocrStatusBadge').classList.add('hidden');
+            document.getElementById('ocrResultArea').classList.add('hidden');
+        }
+
+        function clearFormExceptPreset() {
+            document.getElementById('invoiceNumber').value = '';
+            document.getElementById('invoiceFile').value = '';
+            document.getElementById('orderFile').value = '';
+            document.getElementById('invoicePreview').classList.add('hidden');
+            document.getElementById('orderPreview').classList.add('hidden');
+            document.getElementById('ocrStatusBadge').classList.add('hidden');
+            document.getElementById('ocrResultArea').classList.add('hidden');
+        }
+
+        async function loadRecords() {
+            try {
+                const response = await fetch(`${API_BASE}/records`);
+                const records = await response.json();
+                renderRecords(records);
+            } catch (error) {
+                console.error('加载记录失败:', error);
+            }
+        }
+
+        function renderRecords(records) {
+            const container = document.getElementById('recordsList');
+            
+            if (records.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">暂无记录</p>';
+                return;
+            }
+
+            container.innerHTML = records.map(record => `
+                <div class="border border-gray-200 rounded-md p-3 hover:bg-gray-50">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-800">${record.name}</p>
+                            <p class="text-sm text-gray-500">学号: ${record.student_id}</p>
+                            <p class="text-sm text-gray-500">发票号: ${record.invoice_number}</p>
+                            <p class="text-sm text-gray-500">课题组: ${record.group_name || '-'}</p>
+                            <p class="text-sm text-gray-500">类型: ${record.payment_type || '-'}</p>
+                            ${record.other_info ? `<p class="text-sm text-gray-400">备注: ${record.other_info}</p>` : ''}
+                            <p class="text-xs text-gray-400 mt-1">${new Date(record.created_at).toLocaleString()}</p>
+                        </div>
+                        <div class="flex gap-1 flex-wrap">
+                            <button onclick="previewPdf(${record.id})" class="text-blue-500 hover:text-blue-700 text-sm px-2 py-1">预览</button>
+                            <button onclick="downloadPdf(${record.id}, '${record.invoice_number}')" class="text-green-500 hover:text-green-700 text-sm px-2 py-1">下载</button>
+                            <button onclick="editRecord(${record.id})" class="text-yellow-500 hover:text-yellow-700 text-sm px-2 py-1">编辑</button>
+                            <button onclick="deleteRecord(${record.id})" class="text-red-500 hover:text-red-700 text-sm px-2 py-1">删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function previewPdf(id) {
+            window.open(`${API_BASE}/records/${id}/preview`, '_blank');
+        }
+
+        function downloadPdf(id, invoiceNumber) {
+            const link = document.createElement('a');
+            link.href = `${API_BASE}/records/${id}/download`;
+            link.download = `${invoiceNumber}.pdf`;
+            link.click();
+        }
+
+        async function editRecord(id) {
+            try {
+                const response = await fetch(`${API_BASE}/records/${id}`);
+                const record = await response.json();
+                
+                document.getElementById('editId').value = record.id;
+                document.getElementById('editName').value = record.name;
+                document.getElementById('editStudentId').value = record.student_id;
+                document.getElementById('editInvoiceNumber').value = record.invoice_number;
+                document.getElementById('editGroupName').value = record.group_name || '';
+                document.getElementById('editPaymentType').value = record.payment_type || '对公';
+                document.getElementById('editOtherInfo').value = record.other_info || '';
+                
+                document.getElementById('editModal').classList.remove('hidden');
+                document.getElementById('editModal').classList.add('flex');
+            } catch (error) {
+                alert('加载记录失败');
+            }
+        }
+
+        async function handleEdit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('editId').value;
+            const formData = new FormData();
+            formData.append('name', document.getElementById('editName').value);
+            formData.append('student_id', document.getElementById('editStudentId').value);
+            formData.append('invoice_number', document.getElementById('editInvoiceNumber').value);
+            formData.append('group_name', document.getElementById('editGroupName').value);
+            formData.append('payment_type', document.getElementById('editPaymentType').value);
+            formData.append('other_info', document.getElementById('editOtherInfo').value);
+            
+            const invoiceFile = document.getElementById('editInvoiceFile');
+            const orderFile = document.getElementById('editOrderFile');
+            
+            if (invoiceFile.files.length > 0) {
+                formData.append('invoice_image', invoiceFile.files[0]);
+            }
+            if (orderFile.files.length > 0) {
+                formData.append('order_image', orderFile.files[0]);
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/records/${id}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || '更新失败');
+                }
+
+                document.getElementById('editModal').classList.add('hidden');
+                document.getElementById('editModal').classList.remove('flex');
+                loadRecords();
+                alert('更新成功！');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function deleteRecord(id) {
+            if (!confirm('确定要删除这条记录吗？')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/records/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('删除失败');
+                }
+
+                loadRecords();
+                alert('删除成功！');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function exportAllPdfs() {
+            window.location.href = `${API_BASE}/export/all`;
+        }
+
+        function exportExcel() {
+            window.location.href = `${API_BASE}/export/excel`;
+        }
+    </script>
+</body>
+</html>
