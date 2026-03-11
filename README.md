@@ -25,6 +25,7 @@
 | **PDF生成** | 自动生成包含文字信息和图片的PDF文件 |
 | **预览/下载** | 支持浏览器预览PDF或直接下载 |
 | **批量导出** | 一键导出所有记录为PDF压缩包或Excel汇总表 |
+| **一键删除** | 一键清空所有历史记录和相关图片文件 |
 | **历史记录** | 保存所有录入记录，支持编辑和删除 |
 
 ### PDF输出格式
@@ -122,7 +123,8 @@ Fapiao/
 | GET | /api/records | 获取所有记录 |
 | GET | /api/records/{id} | 获取单条记录 |
 | PUT | /api/records/{id} | 更新记录 |
-| DELETE | /api/records/{id} | 删除记录 |
+| DELETE | /api/records/{id} | 删除单条记录 |
+| DELETE | /api/records/all | 删除所有记录 |
 | GET | /api/records/{id}/preview | 预览PDF（浏览器打开） |
 | GET | /api/records/{id}/download | 下载PDF |
 | GET | /api/export/all | 导出所有PDF（ZIP） |
@@ -165,7 +167,16 @@ BAIDU_OCR_SECRET_KEY = "你的SECRET_KEY"
 
 ## 更新说明
 
-### v1.2.0 (当前版本)
+### v1.3.0 (当前版本)
+- **新增**：一键删除所有记录功能
+  - 在历史记录区域添加红色"一键删除"按钮
+  - 双重确认弹窗防止误操作
+  - 同时删除数据库记录和关联的图片文件
+- **优化**：批量导出功能
+  - PDF压缩包导出
+  - Excel汇总表导出
+
+### v1.2.0
 - **新增**：OCR发票号自动识别功能
   - 集成百度AI OCR服务（增值税发票识别 + 通用文字识别）
   - 上传发票图片后自动识别发票号码

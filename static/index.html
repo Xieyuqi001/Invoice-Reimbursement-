@@ -196,6 +196,9 @@
                         <button id="exportExcelBtn" class="bg-purple-500 text-white py-1 px-3 rounded-md text-sm hover:bg-purple-600 transition-colors">
                             导出Excel
                         </button>
+                        <button id="deleteAllBtn" class="bg-red-500 text-white py-1 px-3 rounded-md text-sm hover:bg-red-600 transition-colors">
+                            一键删除
+                        </button>
                     </div>
                 </div>
                 <div id="recordsList" class="space-y-3 max-h-[600px] overflow-y-auto">
@@ -514,6 +517,7 @@
             document.getElementById('clearBtn').addEventListener('click', clearForm);
             document.getElementById('exportAllBtn').addEventListener('click', exportAllPdfs);
             document.getElementById('exportExcelBtn').addEventListener('click', exportExcel);
+            document.getElementById('deleteAllBtn').addEventListener('click', deleteAllRecords);
             document.getElementById('editForm').addEventListener('submit', handleEdit);
             document.getElementById('cancelEditBtn').addEventListener('click', () => {
                 document.getElementById('editModal').classList.add('hidden');
@@ -723,6 +727,28 @@
 
         function exportExcel() {
             window.location.href = `${API_BASE}/export/excel`;
+        }
+
+        async function deleteAllRecords() {
+            if (!confirm('确定要删除所有记录吗？此操作不可恢复！')) return;
+            if (!confirm('再次确认：这将删除所有历史记录和相关图片文件！')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/records/all`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || '删除失败');
+                }
+
+                const result = await response.json();
+                loadRecords();
+                alert(result.message);
+            } catch (error) {
+                alert(error.message);
+            }
         }
     </script>
 </body>

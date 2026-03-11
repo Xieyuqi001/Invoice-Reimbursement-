@@ -289,3 +289,23 @@ def get_ocr_status():
         "available": ocr_service.is_available(),
         "message": "OCR服务已就绪" if ocr_service.is_available() else "OCR服务未配置，请在config.py中配置百度AI API密钥"
     }
+
+@router.delete("/records/all")
+def delete_all_records(db: Session = Depends(get_db)):
+    records = db.query(Record).all()
+    
+    if not records:
+        return {"message": "没有可删除的记录", "deleted_count": 0}
+    
+    deleted_count = len(records)
+    
+    for record in records:
+        if os.path.exists(record.invoice_image):
+            os.remove(record.invoice_image)
+        if os.path.exists(record.order_image):
+            os.remove(record.order_image)
+        db.delete(record)
+    
+    db.commit()
+    
+    return {"message": f"成功删除 {deleted_count} 条记录", "deleted_count": deleted_count}
